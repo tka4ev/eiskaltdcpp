@@ -56,4 +56,18 @@ struct hash<dcpp::HashValue<T> > {
     }
 };
 
+template<typename T>
+struct hash<dcpp::HashValue<T>* > {
+    size_t operator()(const dcpp::HashValue<T>* rhs) const {
+        return *(size_t*)rhs;
+    }
+};
+
+template<typename T>
+struct equal_to<dcpp::HashValue<T>*> {
+    bool operator()(const dcpp::HashValue<T>* lhs, const dcpp::HashValue<T>* rhs) const {
+        return (*lhs) == (*rhs);
+    }
+};
+
 }

@@ -55,7 +55,7 @@ public:
     Types getType() const { return type; }
     int getSlots() const { return aslots; }
     int getFreeSlots() const { return freeSlots; }
-    TTHValue getTTH() const { return tth; }
+    const TTHValue& getTTH() const { return tth; }
     const string& getIP() const { return IP; }
     const string& getToken() const { return token; }
 #ifdef WITH_DHT

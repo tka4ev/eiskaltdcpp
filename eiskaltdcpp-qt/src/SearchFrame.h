@@ -22,6 +22,8 @@
 
 #include "ui_UISearchFrame.h"
 #include "ArenaWidget.h"
+#include "WulforUtil.h"
+#include "DownloadToHistory.h"
 
 #include "dcpp/stdinc.h"
 #include "dcpp/SearchResult.h"
@@ -35,14 +37,19 @@ using namespace dcpp;
 class SearchItem;
 class SearchFramePrivate;
 
-class SearchStringListModel: public QStringListModel{
+class SearchStringListModel : public QStringListModel
+{
 public:
-    SearchStringListModel(QObject *parent = NULL): QStringListModel(parent){}
-    virtual ~SearchStringListModel(){}
+    SearchStringListModel(QObject *parent = 0) :
+        QStringListModel(parent)
+    {}
+
+    virtual ~SearchStringListModel()
+    {}
 
     QVariant data(const QModelIndex &index, int role) const;
     bool setData(const QModelIndex &index, const QVariant &value, int role);
-    Qt::ItemFlags flags(const QModelIndex &) const { return (Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsUserCheckable); }
+    Qt::ItemFlags flags(const QModelIndex &) const;
 
 private:
    QList<QString> checked;
@@ -57,14 +64,12 @@ class SearchFrame : public QWidget,
     Q_OBJECT
     Q_INTERFACES(ArenaWidget)
 
-    typedef QMap<QString, QVariant> VarMap;
-
-    class Menu : public dcpp::Singleton<Menu>{
-    friend class dcpp::Singleton<Menu>;
-
+    class Menu : public dcpp::Singleton<Menu>
+    {
+        friend class dcpp::Singleton<Menu>;
     public:
-        enum Action{
-            Download=0,
+        enum Action {
+            Download = 0,
             DownloadTo,
             DownloadWholeDir,
             DownloadWholeDirTo,
@@ -85,8 +90,7 @@ class SearchFrame : public QWidget,
             None
         };
 
-        Action exec(QStringList);
-        QMenu *buildUserCmdMenu(QList<QString> hubs);
+        Action exec(StringList);
         QMap<QString, QString> ucParams;
         QString getDownloadToPath() {return downToPath; }
         void addTempPath(const QString &path);
@@ -108,13 +112,13 @@ class SearchFrame : public QWidget,
     };
 
 public:
-    enum AlreadySharedAction{
-        None=0,
+    enum AlreadySharedAction {
+        None = 0,
         Filter,
         Highlight
     };
 
-    SearchFrame(QWidget* = NULL);
+    SearchFrame(QWidget* = 0);
     virtual ~SearchFrame();
 
     QWidget *getWidget();
@@ -131,6 +135,7 @@ public Q_SLOTS:
     void searchAlternates(const QString &);
     void searchFile(const QString &);
     void fastSearch(const QString &, bool);
+    void slotUpdateStatus();
 
 protected:
     virtual void closeEvent(QCloseEvent*);
@@ -138,16 +143,18 @@ protected:
 
 Q_SIGNALS:
     /** SearchManager signals */
-    void coreSR(const VarMap&);
+    void coreAppendTask(SearchResultPtr);
+    void coreProcessTasks();
 
     /** ClienManager signals */
     void coreClientConnected(const QString &info);
     void coreClientUpdated(const QString &info);
     void coreClientDisconnected(const QString &info);
 
+    void dropResult();
+
 private Q_SLOTS:
     void slotFilter();
-    void timerTick();
     void slotClear();
     void slotTimer();
     void slotResultDoubleClicked(const QModelIndex&);
@@ -165,24 +172,47 @@ private Q_SLOTS:
     void onHubChanged(const QString &info);
     void onHubRemoved(const QString &info);
 
-    void addResult(const VarMap &map);
-
 private:
-    void init();
-    void initSecond();
 
+    template<typename ...Params, typename ...Args>
+    void forEachSelected(
+            void (SearchItem::*func)(Params ...) const,
+            const Args& ...args)
+    {
+        auto indexes =
+                treeView_RESULTS->selectionModel()->selectedRows();
+
+        for (const auto &index: indexes) {
+            auto item = getValidItem(index);
+            if (item) (item->*func)(args...);
+        }
+    }
+
+    template<typename _Function>
+    _Function forEachSelected(_Function pred) {
+        auto indexes =
+                treeView_RESULTS->selectionModel()->selectedRows();
+
+        for (const auto &index: indexes) {
+            auto item = getValidItem(index);
+            if (item) pred(item);
+        }
+        return pred;
+    }
+
+    void init();
     void load();
     void save();
 
-    void getParams(VarMap&, const dcpp::SearchResultPtr&);
-    bool getDownloadParams(VarMap&, SearchItem*);
-    bool getWholeDirParams(VarMap&, SearchItem*);
+    void clipMagnets(bool web);
+    void execUserCommand();
+    void removeSelected();
+    void ignoreSelected();
 
-    void download(const VarMap&);
-    void getFileList(const VarMap&, bool = false);
-    void addToFav(const QString&);
-    void grant(const VarMap&);
-    void removeSource(const VarMap&);
+    QString getTargetDir();
+
+    QModelIndex getValidIndex(const QModelIndex&);
+    SearchItem *getValidItem(const QModelIndex&);
 
     // SearchManagerListener
     virtual void on(SearchManagerListener::SR, const SearchResultPtr& aResult) noexcept;

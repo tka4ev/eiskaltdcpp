@@ -17,166 +17,295 @@
 #include <QHash>
 #include <QStringList>
 #include <QRegExp>
+#include <QQueue>
 
 #include "dcpp/stdinc.h"
 #include "dcpp/SearchResult.h"
 #include "dcpp/SearchManager.h"
+#include "dcpp/QueueManager.h"
+#include "dcpp/FavoriteManager.h"
+#include "dcpp/UploadManager.h"
+
+#include "WulforUtil.h"
+#include "HubManager.h"
+#include "HubFrame.h"
+#include "SearchBlacklist.h"
+#include "ItemModelSortAlgorithm.h"
+
+#include <unordered_map>
+
+using namespace dcpp;
 
 class SearchProxyModel: public QSortFilterProxyModel {
-Q_OBJECT
+    Q_OBJECT
 public:
-    SearchProxyModel(QObject *parent = NULL): QSortFilterProxyModel(parent){}
-    virtual ~SearchProxyModel(){}
+    SearchProxyModel(QObject *parent = NULL) :
+        QSortFilterProxyModel(parent) {}
+
+    virtual ~SearchProxyModel() {}
 
     virtual void sort(int column, Qt::SortOrder order);
 };
 
-static const unsigned COLUMN_SF_COUNT          = 0;
-static const unsigned COLUMN_SF_FILENAME       = 1;
-static const unsigned COLUMN_SF_EXTENSION      = 2;
-static const unsigned COLUMN_SF_SIZE           = 3;
-static const unsigned COLUMN_SF_ESIZE          = 4;
-static const unsigned COLUMN_SF_TTH            = 5;
-static const unsigned COLUMN_SF_PATH           = 6;
-static const unsigned COLUMN_SF_NICK           = 7;
-static const unsigned COLUMN_SF_FREESLOTS      = 8;
-static const unsigned COLUMN_SF_ALLSLOTS       = 9;
-static const unsigned COLUMN_SF_IP             = 10;
-static const unsigned COLUMN_SF_HUB            = 11;
-static const unsigned COLUMN_SF_HOST           = 12;
-
-class SearchListException{
-    public:
-
-    enum Type{
-        Sort=0,
-        Add,
-        Unkn
-    };
-
-        SearchListException();
-        SearchListException(const SearchListException&);
-        SearchListException(const QString& message, Type type);
-        virtual ~SearchListException();
-
-        SearchListException &operator=(const SearchListException&);
-
-        QString message;
-        Type type;
-};
-
 class SearchItem
 {
-
+    Q_DISABLE_COPY(SearchItem)
 public:
-    SearchItem(const QList<QVariant> &data, SearchItem *parent = 0);
-    virtual ~SearchItem();
 
-    void appendChild(SearchItem *child);
+    const CID &cid() const
+    { return m_result->getUser()->getCID(); }
 
-    SearchItem *child(int row);
-    int childCount() const;
-    int columnCount() const;
-    QVariant data(int column) const;
-    int row() const;
-    SearchItem *parent() const;
-    bool exists(const QString &user_cid) const;
+    const TTHValue &tth() const
+    { return m_result->getTTH(); }
 
-    unsigned count;
+    const SearchResultPtr &result() const
+    { return m_result; }
 
-    QString cid;
+    QString getCidString() const;
+    QString getTthString() const;
+    QString getFullPath() const;
+    QString getFileName() const;
+    QString getFilePath() const;
+    QString getFileSizeString() const;
+    QString getFileExt() const;
+    QString getUserNick() const;
+    QString getUserIPString() const;
+    QString getHubName() const;
+    QString getHubUrl() const;
+    QString getReal() const;
+    QString getMagnet() const;
 
-    bool isDir;
+    const UserPtr &getUser() const;
+    HintedUser getHintedUser() const;
 
-    QList<SearchItem*> childItems;
+    qlonglong getFileSize() const;
+    quint32 getBinAddr() const;
+
+    int getFreeSlots() const;
+    int getSlots() const;
+
+    bool isDir() const;
+    bool isFile() const;
+    bool isShared() const;
+    bool isFavUser() const;
+
+
+    void download(const string&) const;
+    void downloadWhole(const string&) const;
+    void getFileList(bool) const;
+    void addAsFavorite() const;
+    void grantSlot() const;
+    void removeFromQueue() const;
+    void openPm() const;
+
+    struct CheckTTH {
+        CheckTTH() :
+            firstHubs(true),
+            op(true),
+            hasTTH(false),
+            firstTTH(true)
+        {}
+
+        void operator()(SearchItem*);
+
+        StringList hubs;
+        TTHValue tth;
+
+        bool firstHubs;
+        bool op;
+        bool hasTTH;
+        bool firstTTH;
+    };
+
 private:
+    friend class SearchModel;
 
-    QList<QVariant> itemData;
+    SearchItem();
+    explicit SearchItem(const SearchResultPtr &sr);
+    ~SearchItem();
+
+    int row() const;
+    int childCount() const;
+
+    void setChilds(QList<SearchItem*>&);
+    const QList<SearchItem*> &childs() const;
+
+    SearchItem *child(int) const;
+    SearchItem *parent() const;
+    SearchItem *takeChildren(int);
+
+    bool moveChildren(int, int);
+    void appendChildren(SearchItem*);
+    bool insertChildren(SearchItem*, int);
+
+    bool exists(const SearchResultPtr&, bool = false) const;
+    bool equal(const SearchResultPtr&, bool) const;
+
+    void swapData(SearchItem*);
+
+    void clearChilds();
+
+    inline bool isRoot() const
+    { return !parent() && !m_result; }
+
+    inline bool hasChildren() const
+    { return !childItems.isEmpty(); }
+
+    inline bool validRow(int row) const
+    { return row >= 0 && row < childCount(); }
+
+    inline bool isExpanded() const
+    { return expanded; }
+
+    inline int hitCount() const
+    { return childItems.count() + 1; }
+
+    inline void setExpanded(bool state)
+    { expanded = state; }
+
+//data
+    QList<SearchItem*> childItems;
+
+    mutable QString cached_nick;
+
+    SearchResultPtr m_result;
+
     SearchItem *parentItem;
+
+    bool expanded;
 };
 
 class SearchModel : public QAbstractItemModel
 {
     Q_OBJECT
-    typedef QMap<QString, QVariant> VarMap;
 public:
-
     SearchModel(QObject *parent = 0);
-    ~SearchModel();
+    virtual ~SearchModel();
 
-    /** */
-    QVariant data(const QModelIndex &, int) const;
-    /** */
-    Qt::ItemFlags flags(const QModelIndex &) const;
-    /** */
-    QVariant headerData(int section, Qt::Orientation, int role = Qt::DisplayRole) const;
-    /** */
-    QModelIndex index(int, int, const QModelIndex &parent = QModelIndex()) const;
-    /** */
-    QModelIndex parent(const QModelIndex &index) const;
-    /** */
-    int rowCount(const QModelIndex &parent = QModelIndex()) const;
-    /** */
-    int columnCount(const QModelIndex &parent = QModelIndex()) const;
-    /** */
-    bool hasChildren(const QModelIndex &parent) const;
-    /** sort list */
+    enum Columns : int
+    {
+        ColumnFirst,
+        ColumnHits = ColumnFirst,
+        ColumnFileName,
+        ColumnFileExtension,
+        ColumnFileSize,
+        ColumnFileESize,
+        ColumnTth,
+        ColumnFilePath,
+        ColumnNick,
+        ColumnFreeSlots,
+        ColumnSlots,
+        ColumnIp,
+        ColumnHubName,
+        ColumnHubAddress,
+        ColumnLast
+    };
+
+    virtual QVariant data(const QModelIndex &, int) const;
+    virtual Qt::ItemFlags flags(const QModelIndex &) const;
+    virtual QVariant headerData(int section, Qt::Orientation, int role = Qt::DisplayRole) const;
+    virtual QModelIndex index(int, int, const QModelIndex &parent = QModelIndex()) const;
+    virtual QModelIndex parent(const QModelIndex &index) const;
+    virtual int rowCount(const QModelIndex &parent = QModelIndex()) const;
+    virtual int columnCount(const QModelIndex &parent = QModelIndex()) const;
     virtual void sort(int column, Qt::SortOrder order = Qt::AscendingOrder);
+    virtual bool hasChildren(const QModelIndex &parent) const;
+    virtual bool removeRows(int row, int count, const QModelIndex &parent = QModelIndex());
 
-    /** */
-    QModelIndex createIndexForItem(SearchItem*);
+    QModelIndex indexForParent(const SearchItem*) const;
 
-    void setFilterRole(int);
-
-    /** */
-    bool addResult(
-            const QString &file,
-            qulonglong size,
-            const QString &tth,
-            const QString &path,
-            const QString &nick,
-            const int free_slots,
-            const int all_slots,
-            const QString &ip,
-            const QString &hub,
-            const QString &host,
-            const QString &cid,
-            const bool isDir);
-
-    /** */
     int getSortColumn() const;
-    /** */
     void setSortColumn(int);
-    /** */
+
     Qt::SortOrder getSortOrder() const;
-    /** */
     void setSortOrder(Qt::SortOrder);
+
+    void setSearchType(SearchManager::TypeModes);
 
     /** Clear model and redraw view*/
     void clearModel();
-    /** */
-    void removeItem(const SearchItem*);
 
-    /** */
-    void repaint();
+    SearchItem *getItem(const QModelIndex &index, SearchItem *defItem = nullptr) const;
 
-public Q_SLOTS:
-    /** */
-    bool addResultPtr(const VarMap&);
+    struct Counters
+    {
+        Counters(qlonglong _result, qlonglong _dropped, qlonglong _unique) :
+            result(_result), dropped(_dropped),
+            unique(_unique) {}
+
+        qlonglong result;
+        qlonglong dropped;
+        qlonglong unique;
+    };
+
+    Counters getCounters() const
+    { return Counters(results, dropped, rowCount()); }
+
+    inline bool isEmpty() const
+    { return !rootItem->hasChildren(); }
+
+    void resetCounters()
+    { results = dropped = 0; }
+
+public slots:
+    void expandItem(const QModelIndex&);
+    void collapseItem(const QModelIndex&);
+
+    void processTasks();
+    void appendTask(SearchResultPtr);
+
+    void incDropped()
+    { dropped++; }
+
+    void setFilterRole(int);
+
+signals:
+    void expandIndex(QModelIndex);
+    void updateStatus();
+    void injectTasks();
 
 private:
-    /** */
-    bool okToFind(const SearchItem*);
-    /** */
-    int filterRole;
-    /** */
-    int sortColumn;
-    /** */
-    Qt::SortOrder sortOrder;
-    /** */
-    SearchItem *rootItem;
-    /** */
-    QHash<QString, SearchItem*> tths;
 
-    void reset();
+    typedef std::unordered_map
+    <
+        const TTHValue*,
+        SearchItem*,
+        hash<TTHValue*>,
+        equal_to<TTHValue*>
+    > ParentMap;
+
+    ParentMap parents;
+
+    inline SearchItem* findParent(const TTHValue &groupCond) {
+        ParentMap::iterator i = parents.find(&groupCond);
+        return i != parents.end() ? i->second : rootItem;
+    }
+
+    void addResult(const SearchResultPtr &sr);
+
+    void resort(SearchItem*, int);
+
+    void moveItem(SearchItem*);
+
+    void insertItem(SearchItem*, SearchItem*);
+
+    int getSortPos(const SearchItem*, const SearchItem*, int) const;
+    int compareItems(const SearchItem*, const SearchItem*, int) const;
+
+
+    int filterRole;
+    int sortColumn;
+
+    qulonglong dropped;
+    qulonglong results;
+
+    Qt::SortOrder sortOrder;
+
+    SearchManager::TypeModes searchType;
+
+    SearchItem *rootItem;
+
+    QVariantList columns;
+
+    QQueue<SearchResultPtr> resultTasks;
 };
