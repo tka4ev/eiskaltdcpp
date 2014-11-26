@@ -104,6 +104,8 @@ class SearchFrame : public QWidget,
 
         QString downToPath;
 
+        int uc_cmd_id;
+
         QMenu *menu;
         QMenu *magnet_menu;
         QMenu *down_to;

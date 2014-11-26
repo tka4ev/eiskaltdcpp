@@ -44,7 +44,8 @@ static void SigHandler(int sig) {
     } else if (sig == SIGQUIT) {
         str += "SIGQUIT";
     } else if (sig == SIGHUP) {
-        str += "SIGHUP";
+       ConfigReload();
+       return;
     } else {
         str += Util::toString(sig);
     }
@@ -229,7 +230,7 @@ int main(int argc, char* argv[])
 {
     parseArgs(argc, argv);
 
-    sTitle = "eiskaltdcpp-daemon (EiskaltDC++ core 2.2)";
+    sTitle = "eiskaltdcpp-daemon (EiskaltDC++ core " + string(EISKALTDCPP_VERSION) + ")";
 
 #ifdef _DEBUG
     sTitle += " [debug]";

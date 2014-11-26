@@ -428,6 +428,11 @@ QString WulforUtil::getNicks(const QString &cid, const QString &hintUrl){
     return getNicks(CID(cid.toStdString()), hintUrl);
 }
 
+QString WulforUtil::getNickViaOnlineUser(const QString &cid, const QString &hintUrl) {
+    OnlineUser* user = ClientManager::getInstance()->findOnlineUser(CID(_tq(cid)), _tq(hintUrl), true);
+    return user ? _q(user->getIdentity().getNick()) : QString();
+}
+
 QString WulforUtil::getNicks(const CID &cid, const QString &hintUrl){
     return _q(dcpp::Util::toString(ClientManager::getInstance()->getNicks(cid, _tq(hintUrl))));
 }
@@ -965,45 +970,8 @@ QStringList WulforUtil::getLocalIPs(){
     return addresses;
 }
 
-QString WulforUtil::formatBytes(int64_t aBytes, int base){
-    QString s;
-
-    if (base == 1024){
-        if(aBytes < 1024)
-            s = tr("%1 B").arg((int)(aBytes & 0xffffffff));
-        else if(aBytes < 1024*1024)
-            s = tr("%1 KiB").arg(static_cast<double>(aBytes)/1024.0, 0, 'f', 1);
-        else if(aBytes < 1024*1024*1024)
-            s = tr("%1 MiB").arg(static_cast<double>(aBytes)/(1024.0*1024.0), 0, 'f', 1);
-        else if(aBytes < static_cast<int64_t>(1024)*1024*1024*1024)
-            s = tr("%1 GiB").arg(static_cast<double>(aBytes)/(1024.0*1024.0*1024.0), 0, 'f', 2);
-        else if(aBytes < static_cast<int64_t>(1024)*1024*1024*1024*1024)
-            s = tr("%1 TiB").arg(static_cast<double>(aBytes)/(1024.0*1024.0*1024.0*1024.0), 0, 'f', 3);
-        else
-            s = tr("%1 PiB").arg(static_cast<double>(aBytes)/(1024.0*1024.0*1024.0*1024.0*1024.0), 0, 'f', 4);
-    }
-    else if (base == 1000){
-        if(aBytes < 1000)
-            s = tr("%1 B").arg((int)(aBytes & 0xffffffff));
-        else if(aBytes < 1000*1000)
-            s = tr("%1 KB").arg(static_cast<double>(aBytes)/1000.0, 0, 'f', 1);
-        else if(aBytes < 1000*1000*1000)
-            s = tr("%1 MB").arg(static_cast<double>(aBytes)/(1000.0*1000.0), 0, 'f', 1);
-        else if(aBytes < static_cast<int64_t>(1000)*1000*1000*1000)
-            s = tr("%1 GB").arg(static_cast<double>(aBytes)/(1000.0*1000.0*1000.0), 0, 'f', 2);
-        else if(aBytes < static_cast<int64_t>(1000)*1000*1000*1000*1000)
-            s = tr("%1 TB").arg(static_cast<double>(aBytes)/(1000.0*1000.0*1000.0*1000.0), 0, 'f', 3);
-        else
-            s = tr("%1 PB").arg(static_cast<double>(aBytes)/(1000.0*1000.0*1000.0*1000.0*1000.0), 0, 'f', 4);
-    }
-    else
-        s = "";
-
-    return s;
-}
-
 QString WulforUtil::formatBytes(int64_t aBytes){
-    return formatBytes(aBytes, WIGET(WI_APP_UNIT_BASE));
+    return _q(Util::formatBytes(aBytes));
 }
 
 QString WulforUtil::makeMagnet(const QString &path, const int64_t size, const QString &tth){
@@ -1161,15 +1129,12 @@ QMenu *WulforUtil::buildUserCmdMenu(const StringList& hub_list, int ctx, QWidget
             }
         } else if (uc->isRaw() || uc->isChat()) {
             menuPtr = ucMenu;
-            auto _ptr = uc->getDisplayName().begin();
+            auto _begin = uc->getDisplayName().begin();
             auto _end = uc->getDisplayName().end();
-            for(; _ptr != _end; ++_ptr) {
-                const QString name = _q(*_ptr);
-                if (_ptr + 1 == _end) {
-                    QAction *act = menuPtr->addAction(name);
-                    act->setToolTip(_q(uc->getCommand()));
-                    act->setStatusTip(_q(uc->getName()));
-                    act->setData(_q(uc->getHub()));
+            for(; _begin != _end; ++_begin) {
+                const QString name = _q(*_begin);
+                if (_begin + 1 == _end) {
+                    menuPtr->addAction(name)->setData(uc->getId());
                 } else {
                     bool found = false;
                     QListIterator<QAction*> iter(menuPtr->actions());

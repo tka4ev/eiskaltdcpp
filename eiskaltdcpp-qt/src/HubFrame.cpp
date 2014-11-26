@@ -295,7 +295,7 @@ HubFrame::Menu::Action HubFrame::Menu::execUserMenu(Client *client, const QStrin
     menu->clear();
     menu->setProperty("iconVisibleInMenu", true);
 
-    menu->setTitle(WulforUtil::getInstance()->getNicks(cid, _q(client->getHubUrl())));
+    menu->setTitle(WulforUtil::getInstance()->getNickViaOnlineUser(cid, _q(client->getHubUrl())));
 
     if (menu->title().isEmpty())
         menu->setTitle(tr("[User went offline]"));
@@ -338,20 +338,16 @@ HubFrame::Menu::Action HubFrame::Menu::execUserMenu(Client *client, const QStrin
         return chat_actions_map[res];
     else if (antispam_menu && antispam_menu->actions().contains(res))
         return static_cast<HubFrame::Menu::Action>(res->data().toInt());
-    else if (res && !res->toolTip().isEmpty()){//User command{
-        last_user_cmd = res->toolTip();
-        QString cmd_name = res->statusTip();
-        QString hub = res->data().toString();
+    else if (res && res->data().canConvert(QVariant::Int)){//User command{
+        int id = res->data().toInt();
 
-        int id = FavoriteManager::getInstance()->findUserCommand(cmd_name.toStdString(), hub.toStdString());
         UserCommand uc;
-
         if (id == -1 || !FavoriteManager::getInstance()->getUserCommand(id, uc))
             return None;
 
         StringMap params;
 
-        if (WulforUtil::getInstance()->getUserCommandParams(uc, params)){
+        if (WulforUtil::getInstance()->getUserCommandParams(uc, params)) {
             UserPtr user = ClientManager::getInstance()->findUser(CID(cid.toStdString()));
 
             if (user)
@@ -375,8 +371,7 @@ HubFrame::Menu::Action HubFrame::Menu::execChatMenu(Client *client, const QStrin
         return None;
 
     menu->clear();
-
-    QAction *title = new QAction(WulforUtil::getInstance()->getNicks(cid, _q(client->getHubUrl())), menu);
+    QAction *title = new QAction(WulforUtil::getInstance()->getNickViaOnlineUser(cid, _q(client->getHubUrl())), menu);
     QFont f;
     f.setBold(true);
     title->setFont(f);
@@ -430,14 +425,10 @@ HubFrame::Menu::Action HubFrame::Menu::execChatMenu(Client *client, const QStrin
         return chat_actions_map[res];
     else if (antispam_menu && antispam_menu->actions().contains(res))
         return static_cast<HubFrame::Menu::Action>(res->data().toInt());
-    else if (res && !res->toolTip().isEmpty()){//User command
-        last_user_cmd = res->toolTip();
-        QString cmd_name = res->statusTip();
-        QString hub = res->data().toString();
+    else if (res && res->data().canConvert(QVariant::Int)){//User command
+        int id = res->data().toInt();
 
-        int id = FavoriteManager::getInstance()->findUserCommand(cmd_name.toStdString(), hub.toStdString());
         UserCommand uc;
-
         if (id == -1 || !FavoriteManager::getInstance()->getUserCommand(id, uc))
             return None;
 
@@ -3597,22 +3588,18 @@ void HubFrame::slotStatusLinkOpen(const QString &url){
     WulforUtil::getInstance()->openUrl(url);
 }
 
-void HubFrame::slotHubMenu(QAction *res){
-    if (res && !res->toolTip().isEmpty()){//User command
-        QString last_user_cmd = res->toolTip();
-        QString cmd_name = res->statusTip();
-        QString hub = res->data().toString();
+void HubFrame::slotHubMenu(QAction *res) {
+    if (res && res->data().canConvert(QVariant::Int)) {//User command
+        int id = res->data().toInt();
 
-        int id = FavoriteManager::getInstance()->findUserCommand(cmd_name.toStdString(), hub.toStdString());
         UserCommand uc;
-
         if (id == -1 || !FavoriteManager::getInstance()->getUserCommand(id, uc))
             return;
 
         StringMap params;
         Q_D(HubFrame);
 
-        if (WulforUtil::getInstance()->getUserCommandParams(uc, params)){
+        if (WulforUtil::getInstance()->getUserCommandParams(uc, params)) {
             d->client->getMyIdentity().getParams(params, "my", true);
             d->client->getHubIdentity().getParams(params, "hub", false);
 
@@ -3933,7 +3920,7 @@ void HubFrame::on(ClientListener::Message, Client*, const ChatMessage &message) 
 
         map["CLR"] = color;
         map["3RD"] = third;
-        map["I4"]  = _q(ClientManager::getInstance()->getOnlineUserIdentity(user->getUser()).getIp());
+        map["I4"]  = _q(user->getIdentity().getIp());
 
         emit coreMessage(map);
 
@@ -3947,7 +3934,7 @@ void HubFrame::on(ClientListener::Message, Client*, const ChatMessage &message) 
             d->client->getHubIdentity().getParams(params, "hub", false);
             params["hubURL"] = d->client->getHubUrl();
             params["userNI"] = _tq(nick);
-            params["userI4"] = ClientManager::getInstance()->getOnlineUserIdentity(user->getUser()).getIp();
+            params["userI4"] = user->getIdentity().getIp();
             d->client->getMyIdentity().getParams(params, "my", true);
             LOG(LogManager::CHAT, params);
         }
