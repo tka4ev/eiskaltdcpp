@@ -256,18 +256,34 @@ int SearchManager::UdpQueue::run() {
             continue;
         }
 
-        string hubIpPort = x.substr(i, j-i);
-        string url = ClientManager::getInstance()->findHub(hubIpPort);
+        HintedUser user;
+        string hubUrl = x.substr(i, j - i);
+        user.hint = ClientManager::getInstance()->findHub(hubUrl);
 
-        string encoding = ClientManager::getInstance()->findHubEncoding(url);
+        if(user.hint.empty()) {
+            auto iter = urlAliases.find(hubUrl);
+            if (iter != urlAliases.end()) {
+                user.hint = iter->second;
+            } else {
+                // Could happen if hub has multiple URLs / IPs
+                user = ClientManager::getInstance()->findLegacyUser(nick);
+                if (!user) {
+                    continue;
+                } else {
+                    urlAliases.emplace(hubUrl, user.hint);
+                    if (urlAliases.size() > 200)
+                        urlAliases.erase(urlAliases.begin());
+                }
+            }
+        }
+
+        string encoding = ClientManager::getInstance()->findHubEncoding(user.hint);
         nick = Text::toUtf8(nick, encoding);
         file = Text::toUtf8(file, encoding);
         hubName = Text::toUtf8(hubName, encoding);
 
-        UserPtr user = ClientManager::getInstance()->findUser(nick, url);
         if(!user) {
-            // Could happen if hub has multiple URLs / IPs
-            user = ClientManager::getInstance()->findLegacyUser(nick);
+            user.user = ClientManager::getInstance()->findUser(nick, user.hint);
             if(!user)
                 continue;
         }
@@ -277,7 +293,7 @@ int SearchManager::UdpQueue::run() {
         string tth;
         if(hubName.compare(0, 4, "TTH:") == 0) {
             tth = hubName.substr(4);
-            StringList names = ClientManager::getInstance()->getHubNames(user->getCID(), Util::emptyString);
+            StringList names = ClientManager::getInstance()->getHubNames(user);
             hubName = names.empty() ? _("Offline") : Util::toString(names);
         }
 
@@ -285,8 +301,8 @@ int SearchManager::UdpQueue::run() {
             continue;
         }
 
-        SearchResultPtr sr(new SearchResult(user, type, slots, freeSlots, size,
-                        file, hubName, url, remoteIp, TTHValue(tth), Util::emptyString));
+        SearchResultPtr sr(new SearchResult(user.user, type, slots, freeSlots, size,
+                        file, hubName, user.hint, remoteIp, TTHValue(tth), Util::emptyString));
         SearchManager::getInstance()->fire(SearchManagerListener::SR(), sr);
 
     } else if(x.compare(1, 4, "RES ") == 0 && x[x.length() - 1] == 0x0a) {

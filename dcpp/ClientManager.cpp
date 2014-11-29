@@ -248,17 +248,22 @@ string ClientManager::findHubEncoding(const string& aUrl) const {
     return Text::hubDefaultCharset;
 }
 
-UserPtr ClientManager::findLegacyUser(const string& aNick) const noexcept {
-    if (aNick.empty())
-        return UserPtr();
+HintedUser ClientManager::findLegacyUser(const string& nick) const noexcept {
+    if(nick.empty())
+        return HintedUser();
+
     Lock l(cs);
 
-    for(auto i = onlineUsers.begin(); i != onlineUsers.end(); ++i) {
-        const OnlineUser* ou = i->second;
-        if(ou->getUser()->isSet(User::NMDC) && Util::stricmp(ou->getIdentity().getNick(), aNick) == 0)
-            return ou->getUser();
+    for(auto i: clients) {
+        auto nmdc = dynamic_cast<NmdcHub*>(i);
+        if(nmdc) {
+            auto ou = nmdc->findUser(nmdc->toUtf8(nick));
+            if (ou)
+                return HintedUser(ou->getUser(), ou->getClient().getHubUrl());
+        }
     }
-    return UserPtr();
+
+    return HintedUser();
 }
 
 UserPtr ClientManager::getUser(const string& aNick, const string& aHubUrl) noexcept {

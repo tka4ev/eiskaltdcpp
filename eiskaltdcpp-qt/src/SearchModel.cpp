@@ -83,7 +83,7 @@ QVariant SearchModel::data(const QModelIndex &index, int role) const {
             switch (index.column()) {
                 case ColumnHits:
                     if (!item->hasChildren() || !item->parent())
-                        return QString();
+                        return QVariant();
                     return item->hitCount();
 
                 case ColumnFileName:      return item->getFileName();
@@ -773,6 +773,8 @@ bool SearchItem::insertChildren(SearchItem *child, int position) {
 
 void SearchItem::swapData(SearchItem *other) {
     m_result.swap(other->m_result);
+    other->cached_nick.clear();
+    cached_nick.clear();
 }
 
 void SearchItem::clearChilds() {
@@ -869,7 +871,7 @@ HintedUser SearchItem::getHintedUser() const {
 }
 
 QString SearchItem::getUserNick() const {
-    if (cached_nick.isNull())
+    if (cached_nick.isEmpty())
         cached_nick = _q(Util::toString(ClientManager::getInstance()->getNicks(getHintedUser())));
 
     return cached_nick;
@@ -957,14 +959,19 @@ void SearchItem::download(const string &aTarget) const
 
 void SearchItem::downloadWhole(const string &aTarget) const
 {
+    string dir;
+
     try {
         if (isFile()) {
-            QueueManager::getInstance()->addDirectory(getFilePath().toStdString(),
-                                                      getHintedUser(), aTarget);
+            dir = getFilePath().toStdString();
+//            QueueManager::getInstance()->addDirectory(getFilePath().toStdString(),
+//                                                      getHintedUser(), aTarget);
         } else {
-            QueueManager::getInstance()->addDirectory(result()->getFile(),
-                                                      getHintedUser(), aTarget);
+            dir = result()->getFile();
+//            QueueManager::getInstance()->addDirectory(result()->getFile(),
+//                                                      getHintedUser(), aTarget);
         }
+        QueueManager::getInstance()->addDirectory(dir, getHintedUser(), aTarget);
     } catch(const Exception&) {}
 }
 
@@ -1038,4 +1045,37 @@ void SearchItem::CheckTTH::operator()(SearchItem *item) {
         StringList sl = ClientManager::getInstance()->getHubs(item->getHintedUser());
         hubs.insert(hubs.end(), sl.begin(), sl.end());
     }
+}
+
+
+SearchViewDelegate::SearchViewDelegate(QObject *parent) :
+        QStyledItemDelegate(parent)
+{ }
+
+SearchViewDelegate::~SearchViewDelegate()
+{ }
+
+bool SearchViewDelegate::helpEvent(QHelpEvent *event, QAbstractItemView* view, const QStyleOptionViewItem &option, const QModelIndex &index)
+{
+    if (!event || !view)
+        return false;
+
+    if (event->type() == QEvent::ToolTip) {
+        QRect rect = view->visualRect(index);
+        QSize size = sizeHint(option, index);
+        if (rect.width() < size.width()) {
+            QVariant tooltip = index.data(Qt::DisplayRole);
+            if (tooltip.canConvert<QString>()) {
+                QToolTip::showText(event->globalPos(), QString("<nobr>%1</nobr>")
+                                   .arg(Qt::escape(tooltip.toString())), view);
+                return true;
+            }
+        }
+        if (!QStyledItemDelegate::helpEvent(event, view, option, index))
+            QToolTip::hideText();
+
+        return true;
+    }
+
+    return QStyledItemDelegate::helpEvent(event, view, option, index);
 }

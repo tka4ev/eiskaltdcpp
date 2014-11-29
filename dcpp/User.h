@@ -92,7 +92,8 @@ struct HintedUser {
     UserPtr user;
     string hint;
 
-    explicit HintedUser(const UserPtr& user_, const string& hint_) : user(user_), hint(hint_) { }
+    HintedUser() : user(nullptr) { }
+    HintedUser(const UserPtr& user_, const string& hint_) : user(user_), hint(hint_) { }
 
     bool operator==(const UserPtr& rhs) const {
         return user == rhs;
@@ -103,6 +104,8 @@ struct HintedUser {
     }
 
     operator UserPtr() const { return user; }
+
+    explicit operator bool() const { return user.get(); }
 };
 
 /** One of possibly many identities of a user, mainly for UI purposes */

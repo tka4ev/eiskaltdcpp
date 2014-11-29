@@ -112,6 +112,7 @@ private:
         CriticalSection csudp;
         Semaphore s;
 
+        map<string,string> urlAliases;
         deque<pair<string, string> > resultList;
 
         bool stop;

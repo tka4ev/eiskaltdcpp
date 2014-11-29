@@ -455,6 +455,7 @@ void SearchFrame::init(){
     toolButton_CLOSEFILTER->setIcon(WICON(WulforUtil::eiEDITDELETE));
 
     treeView_RESULTS->setModel(d->model);
+    treeView_RESULTS->setItemDelegate(new SearchViewDelegate(this));
     treeView_RESULTS->setContextMenuPolicy(Qt::CustomContextMenu);
     treeView_RESULTS->header()->setContextMenuPolicy(Qt::CustomContextMenu);
     treeView_RESULTS->setUniformRowHeights(true);

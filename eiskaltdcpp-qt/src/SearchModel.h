@@ -10,6 +10,7 @@
 #pragma once
 
 #include <QAbstractItemModel>
+#include <QStyledItemDelegate>
 #include <QSortFilterProxyModel>
 #include <QString>
 #include <QPixmap>
@@ -35,6 +36,17 @@
 #include <unordered_map>
 
 using namespace dcpp;
+
+class SearchViewDelegate : public QStyledItemDelegate
+{
+    Q_OBJECT
+public:
+    SearchViewDelegate(QObject* = NULL);
+    virtual ~SearchViewDelegate();
+
+public slots:
+    bool helpEvent(QHelpEvent *event, QAbstractItemView *view, const QStyleOptionViewItem &option, const QModelIndex &index);
+};
 
 class SearchProxyModel: public QSortFilterProxyModel {
     Q_OBJECT
