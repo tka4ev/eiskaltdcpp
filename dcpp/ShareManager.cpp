@@ -54,7 +54,7 @@
 namespace dcpp {
 
 ShareManager::ShareManager() : hits(0), xmlListLen(0), bzXmlListLen(0),
-    xmlDirty(true), forceXmlRefresh(false), refreshDirs(false), update(false), initial(true), listN(0), refreshing(),
+    xmlDirty(true), forceXmlRefresh(false), refreshDirs(false), update(false), initial(true), listN(0), refreshing(false),
     lastXmlUpdate(0), lastFullUpdate(GET_TICK()), bloom(1<<20)
 {
     SettingsManager::getInstance()->addListener(this);
@@ -865,7 +865,7 @@ int ShareManager::run() {
     if(update) {
         ClientManager::getInstance()->infoUpdated();
     }
-	refreshing.store(false);
+	refreshing = false;
 #ifdef WITH_DHT
     dht::IndexManager* im = dht::IndexManager::getInstance();
     if(im && im->isTimeForPublishing())

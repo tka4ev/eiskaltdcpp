@@ -64,7 +64,7 @@ public:
     void removeDirectory(const string& realPath);
     void renameDirectory(const string& realPath, const string& virtualName);
 
-	bool isRefreshing() { return refreshing.load(); }
+	bool isRefreshing() { return refreshing; }
 
     string toVirtual(const TTHValue& tth) const;
     string toReal(const string& virtualFile);
@@ -259,7 +259,7 @@ private:
 
     int listN;
 
-	std::atomic_bool refreshing;
+	std::atomic<bool> refreshing;
 
     uint64_t lastXmlUpdate;
     uint64_t lastFullUpdate;
