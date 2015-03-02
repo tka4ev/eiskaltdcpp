@@ -2288,7 +2288,7 @@ namespace {
 
 void MainWindow::slotJSFileChanged(const QString &script){
 #ifdef USE_JS
-    enum ScriptChangedAction act = (enum ScriptChangedAction)WIGET("scriptmanager/script-changed-action", 0);
+    ScriptChangedAction act = static_cast<ScriptChangedAction>( WIGET("scriptmanager/script-changed-action", 0) );
     bool ask = false;
 
     switch (act){

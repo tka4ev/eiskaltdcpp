@@ -128,7 +128,7 @@ void Settings::dirty(){
     WVSET("settings/dialog-size", size());
 }
 
-void Settings::navigate(enum Settings::Page pg, int tab){
+void Settings::navigate(Settings::Page pg, int tab){
     listWidget->setCurrentRow((int)pg);
     stackedWidget->setCurrentIndex((int)pg);
 

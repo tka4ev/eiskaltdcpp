@@ -101,7 +101,11 @@ static string getDownloadsPath(const string& def) {
                 // Defined in KnownFolders.h.
                 static GUID downloads = {0x374de290, 0x123f, 0x4565, {0x91, 0x64, 0x39, 0xc4, 0x92, 0x5e, 0x46, 0x7b}};
                 if(getKnownFolderPath(downloads, 0, NULL, &path) == S_OK) {
-                    string ret = Text::fromT((const tstring&)path) + "\\";
+#ifdef _UNICODE
+                    string ret = Text::fromT(path) + "\\";
+#else
+                    string ret = Text::wideToUtf8(path) + "\\";
+#endif
                     ::CoTaskMemFree(path);
                     return ret;
                 }
@@ -1287,7 +1291,7 @@ string Util::formatAdditionalInfo(const string& aIp, bool sIp, bool sCC) {
         }
         //printf("%s\n",ret.c_str());
     }
-    return Text::toT(ret);
+    return ret;
 }
 
 bool Util::fileExists(const string &aFile) {

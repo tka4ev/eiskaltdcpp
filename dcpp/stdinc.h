@@ -91,6 +91,10 @@ typedef unsigned __int64 uint64_t;
 #include <limits>
 #include <libintl.h>
 
+#ifdef sprintf
+#undef sprintf
+#endif
+
 #include <boost/format.hpp>
 #include <boost/scoped_array.hpp>
 #include <boost/noncopyable.hpp>

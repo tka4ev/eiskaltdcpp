@@ -238,7 +238,10 @@ struct Compare {
         }
 
         template <typename T>
-        inline bool static Cmp(const T& l, const T& r) __attribute__((always_inline));
+#ifndef _MSC_VER
+        __attribute__((always_inline))
+#endif
+        inline bool static Cmp(const T& l, const T& r);
         
         static AttrComp attrs[7];
 };

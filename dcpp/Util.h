@@ -26,10 +26,13 @@
 # define PATH_SEPARATOR_STR "/"
 #endif
 
+#ifndef _MSC_VER
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <cstdlib>
+#endif
+
 #include <vector>
 #include <functional>
 #include <algorithm>

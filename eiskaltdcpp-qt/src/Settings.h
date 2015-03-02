@@ -40,7 +40,7 @@ public:
     Settings();
     virtual ~Settings();
 
-    void navigate(enum Page, int tab = -1);
+    void navigate(Page, int tab = -1);
 signals:
     void timeToDie();
 

@@ -200,7 +200,7 @@ void ScriptEngine::prepareThis(QScriptEngine &engine){
     QScriptValue scriptsPath = QScriptValue(&engine, QString(CLIENT_SCRIPTS_DIR)+QDir::separator());
 #else
     QScriptValue scriptsPath = QScriptValue(&engine,
-        qApp->applicationDirPath()+QDir::separator()+CLIENT_SCRIPTS_DIR+QDir::separator() );
+        qApp->applicationDirPath() + QDir::separator() + QString(CLIENT_SCRIPTS_DIR) + QDir::separator());
 #endif//_WIN32
     engine.globalObject().setProperty("SCRIPTS_PATH", scriptsPath, QScriptValue::ReadOnly);
 

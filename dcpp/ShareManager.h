@@ -33,6 +33,8 @@
 #include "Pointer.h"
 #include "Atomic.h"
 
+#include <atomic>
+
 #ifdef WITH_DHT
 namespace dht {
     class IndexManager;
@@ -62,7 +64,7 @@ public:
     void removeDirectory(const string& realPath);
     void renameDirectory(const string& realPath, const string& virtualName);
 
-    bool isRefreshing() { return refreshing; }
+	bool isRefreshing() { return refreshing.load(); }
 
     string toVirtual(const TTHValue& tth) const;
     string toReal(const string& virtualFile);
@@ -257,7 +259,7 @@ private:
 
     int listN;
 
-    Atomic<bool,memory_ordering_strong> refreshing;
+	std::atomic_bool refreshing;
 
     uint64_t lastXmlUpdate;
     uint64_t lastFullUpdate;

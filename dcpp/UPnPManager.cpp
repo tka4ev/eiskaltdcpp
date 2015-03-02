@@ -31,7 +31,10 @@
 #ifdef WITH_DHT
 #include "dht/DHT.h"
 #endif
+
 namespace dcpp {
+
+std::atomic_flag UPnPManager::busy = ATOMIC_FLAG_INIT;
 
 void UPnPManager::addImplementation(UPnP* impl) {
     impls.push_back(impl);
@@ -46,7 +49,7 @@ bool UPnPManager::open() {
         return false;
     }
 
-    if(portMapping.exchange(true) == true) {
+    if (busy.test_and_set()) {
         log(_("Another UPnP port mapping attempt is in progress..."));
         return false;
     }
@@ -129,7 +132,8 @@ int UPnPManager::run() {
         log(_("Failed to create port mappings"));
         ConnectivityManager::getInstance()->mappingFinished(false);
     }
-    portMapping = false;
+
+    busy.clear();
     return 0;
 }
 

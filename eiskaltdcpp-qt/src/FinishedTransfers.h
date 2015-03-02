@@ -270,7 +270,7 @@ private:
 #endif
     }
 
-    void getParams(const FinishedFileItemPtr& item, const string& file, FinishedTransfers::VarMap &params){
+    void getParams(const FinishedFileItemPtr& item, const string& file, VarMap &params){
         QString nicks = "";
 
         params["FNAME"] = _q(file).split(QDir::separator()).last();
@@ -311,7 +311,7 @@ private:
 #endif
     }
 
-    void getParams(const FinishedUserItemPtr& item, const UserPtr& user, FinishedTransfers::VarMap &params){
+    void getParams(const FinishedUserItemPtr& item, const UserPtr& user, VarMap &params){
         QString files = "";
 
         params["TIME"]  = _q(Util::formatTime("%Y-%m-%d %H:%M:%S", item->getTime()));
